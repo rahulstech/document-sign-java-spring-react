@@ -300,12 +300,7 @@
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
   padding: var(--spacing-4);
-  transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
-}
-
-@utility adobe-card-hover {
-  border-color: var(--color-border-strong);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-xs);
 }
 
 @utility adobe-doc-area {
@@ -551,11 +546,6 @@
 
 .adobe-tab:hover {
   color: var(--color-text-primary);
-}
-
-.adobe-card:hover {
-  border-color: var(--color-border-strong);
-  box-shadow: var(--shadow-md);
 }
 
 /* ===== Disabled States ===== */

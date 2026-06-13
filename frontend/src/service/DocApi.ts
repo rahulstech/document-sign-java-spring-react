@@ -34,6 +34,16 @@ export interface UploadDocumentResult {
     docUrl: string;
 }
 
+export interface Document {
+    id: string,
+    url: string,
+    type: string,
+    name: string,
+    isPublished: boolean,
+    isSigned: boolean,
+    isVerified: boolean,
+}
+
 // ── Multi-step upload logic ─────────────────────────────────────────────
 
 export async function uploadDocument(params: UploadDocumentParams): Promise<UploadDocumentResult> {
@@ -61,6 +71,12 @@ export async function uploadDocument(params: UploadDocumentParams): Promise<Uplo
     return confirmData;
 }
 
-// ── TanStack Query mutation hook ────────────────────────────────────────
+// Get document by id
+export async function getDocumentById(docId: string): Promise<Document> {
+    // await new Promise(resolve => setTimeout(resolve, 3000));
+    // throw new Error("some error");
+    const { data } = await client.get<Document>(`/docs/${docId}`);
+    return data;
+}
 
 

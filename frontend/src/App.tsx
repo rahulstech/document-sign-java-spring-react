@@ -1,16 +1,28 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { UploadDocument } from "./pages/UploadDocument";
 import { apiQueryClient } from "./hooks/ApiQueryHooks";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { EditDocument } from "./pages/EditDocument";
+
+
+
+const routes = createBrowserRouter([
+  {
+    path: "/docs/upload",
+    element: <UploadDocument />
+  },
+  {
+    path: "/docs/:docId/edit",
+    element: <EditDocument />
+  }
+]);
 
 
 export function App() {
 
   return (
-    <div className="p-4">
       <QueryClientProvider client={apiQueryClient} >
-        <UploadDocument />
+        <RouterProvider router={routes} />
       </QueryClientProvider>
-      
-    </div>
   )
 }

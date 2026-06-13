@@ -1,6 +1,8 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import UploadFileIcon from "../assets/icons/upload_file.svg";
 import { useUploadDocument } from "../hooks/ApiQueryHooks";
+import { useNavigate } from "react-router-dom";
+import { IconButton } from "../components/IconButton";
 
 const MAX_FILE_SIZE_MB = 100;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -8,7 +10,8 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 export function UploadDocument() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [error, setError] = useState<string | null>(null);
-    const { mutate, isPending, isSuccess, data, error: mutationError } = useUploadDocument();
+    const { mutate, isPending, error: mutationError } = useUploadDocument();
+    const navigate = useNavigate();
 
     const displayError = error ?? (mutationError ? mutationError.message : null);
 
@@ -39,16 +42,15 @@ export function UploadDocument() {
             size: file.size,
             blob: file,
             name: file.name,
+        }, {
+            onSuccess: (data) => {
+                navigate(`/docs/${data.docId}/edit`);
+            },
         });
     }
 
-    if (isSuccess) {
-        // TODO: navigate to document edit page
-        console.log(data);
-    }
-
     return (
-        <div className="flex flex-1 justify-center">
+        <div className="flex flex-1 justify-center p-4">
             <div className="flex flex-col items-center gap-4">
                 <input
                     ref={fileInputRef}
@@ -58,28 +60,17 @@ export function UploadDocument() {
                     className="hidden"
                     onChange={handleFileChange}
                 />
-                <button
+                <IconButton
                     id="upload-document-btn"
-                    className="adobe-btn adobe-btn-primary text-xl px-10 py-5"
+                    className="adobe-btn-primary text-xl px-10 py-5"
+                    icon={UploadFileIcon}
+                    iconAlt="Upload"
+                    iconClassName="w-6 h-6 filter-[invert(1)]"
+                    loading={isPending}
                     onClick={handleButtonClick}
-                    disabled={isPending}
                 >
-                    {isPending ? (
-                        <>
-                            <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            Uploading…
-                        </>
-                    ) : (
-                        <>
-                            <img
-                                src={UploadFileIcon}
-                                alt="Upload"
-                                className="w-6 h-6 filter-[invert(1)]"
-                            />
-                            Upload Document
-                        </>
-                    )}
-                </button>
+                    {isPending ? "Uploading…" : "Upload Document"}
+                </IconButton>
                 <p className={`text-sm ${displayError ? "text-danger" : "text-(--color-text-tertiary)"}`}>
                     {displayError ?? "Upload PDF document to sign digitally"}
                 </p>
