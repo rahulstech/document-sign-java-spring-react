@@ -1,25 +1,26 @@
 package com.github.rahulstech.document_sign.controller;
 
-import com.github.rahulstech.document_sign.dto.ConfirmDocumentUploadRequest;
-import com.github.rahulstech.document_sign.dto.ConfirmDocumentUploadResponse;
-import com.github.rahulstech.document_sign.dto.CreateDocumentUploadUrlRequest;
-import com.github.rahulstech.document_sign.dto.CreateDocumentUploadUrlResponse;
+import com.github.rahulstech.document_sign.dto.*;
+import com.github.rahulstech.document_sign.exception.HttpException;
+import com.github.rahulstech.document_sign.datasource.model.Document;
+import com.github.rahulstech.document_sign.datasource.repository.DocumentRepository;
 import com.github.rahulstech.document_sign.service.upload.UploadService;
 import jakarta.validation.Valid;
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/docs")
 @RequiredArgsConstructor
+@CrossOrigin("*")
 public class DocsController {
 
-    @NonNull
-    private UploadService uploadService;
+    private final UploadService uploadService;
+
+    private final DocumentRepository docRepo;
+
 
     @PostMapping("/upload/url")
     public CreateDocumentUploadUrlResponse createDocumentUploadUrl(@Valid @RequestBody CreateDocumentUploadUrlRequest req) {
@@ -29,12 +30,31 @@ public class DocsController {
 
     @PostMapping("/upload/confirm")
     public ConfirmDocumentUploadResponse confirmDocumentUpload(@Valid @RequestBody ConfirmDocumentUploadRequest req) {
+        var userId = "guest"; // TODO: get user id when auth implemented
 
-        // save the document
-        var result = uploadService.saveUpload("guest", req.key()); // TODO: set userId from auth as first parameter
+        // save document in public storage
+        var result = uploadService.saveUpload(userId, req.key());
 
-        // add in database
+        // create document
+        var document = new Document();
+        document.setUserId(userId);
+        document.setUrl(result.publicUrl());
+        document.setType(result.contentType());
+        document.setName(req.name());
 
-        return new ConfirmDocumentUploadResponse("doc1", result.publicUrl(), result.contentType());
+        // save document in database
+        var savedDocument = docRepo.save(document);
+
+        return new ConfirmDocumentUploadResponse(
+                savedDocument.getId().toString(), result.publicUrl(), result.contentType(), savedDocument.getName()
+        );
+    }
+
+    @GetMapping("/{doc_id}")
+    public GetDocumentResponse getDocument(@PathVariable("doc_id") UUID docId) {
+        var document = docRepo.findById(docId)
+                .orElseThrow(() -> HttpException.notFound("no document found for id "+docId));
+
+        return GetDocumentResponse.fromDocument(document);
     }
 }

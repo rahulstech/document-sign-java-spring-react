@@ -21,7 +21,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UploadService {
 
-    private static final Logger logger = LoggerFactory.getLogger("UploadService");
+    private static final Logger logger = LoggerFactory.getLogger("UploadServiceProdImpl");
 
     private static final long SIGNATURE_DURATION_SECONDS = 24 * 3600; // 24 hours
 
@@ -51,7 +51,7 @@ public class UploadService {
 
         var o = presigner.presignPutObject(builder ->
                 builder.putObjectRequest(cmd)
-                    .signatureDuration(Duration.ofSeconds(SIGNATURE_DURATION_SECONDS))
+                        .signatureDuration(Duration.ofSeconds(SIGNATURE_DURATION_SECONDS))
         );
 
         var url = o.url().toString();
@@ -59,7 +59,7 @@ public class UploadService {
         return new CreateUploadUrlResult(url, key);
     }
 
-    public Map<String,Object> getFileInfo(String key) {
+    private Map<String,Object> getFileInfo(String key) {
         var cmd = HeadObjectRequest.builder()
                 .bucket(bucketName)
                 .key(key)
@@ -129,3 +129,4 @@ public class UploadService {
         return cdnBaseUrl+"/"+publicKey;
     }
 }
+

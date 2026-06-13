@@ -2,12 +2,9 @@ package com.github.rahulstech.document_sign.exception;
 
 import org.springframework.http.HttpStatus;
 
-import java.util.Collections;
-import java.util.Map;
-
 public class HttpException extends RuntimeException {
 
-    private final HttpStatus httpStatus;
+    final HttpStatus httpStatus;
 
     public HttpException(int status, String message) {
         this(status, message, null);
@@ -20,5 +17,9 @@ public class HttpException extends RuntimeException {
 
     public static HttpException internalServerError(String message) {
         return  new HttpException(500, message);
+    }
+
+    public static HttpException notFound(String message) {
+        return new HttpException(404, message);
     }
 }
