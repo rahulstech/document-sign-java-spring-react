@@ -7,6 +7,8 @@ import com.github.rahulstech.document_sign.datasource.repository.DocumentReposit
 import com.github.rahulstech.document_sign.service.upload.UploadService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -23,9 +25,10 @@ public class DocsController {
 
 
     @PostMapping("/upload/url")
-    public CreateDocumentUploadUrlResponse createDocumentUploadUrl(@Valid @RequestBody CreateDocumentUploadUrlRequest req) {
+    public ResponseEntity<@NonNull CreateDocumentUploadUrlResponse> createDocumentUploadUrl(@Valid @RequestBody CreateDocumentUploadUrlRequest req) {
         var result = uploadService.createUploadUrl(req.toCreateUploadUrlParam());
-        return CreateDocumentUploadUrlResponse.fromCreateUploadUrlResult(result);
+        var res = CreateDocumentUploadUrlResponse.fromCreateUploadUrlResult(result);
+        return ResponseEntity.status(201).body(res);
     }
 
     @PostMapping("/upload/confirm")

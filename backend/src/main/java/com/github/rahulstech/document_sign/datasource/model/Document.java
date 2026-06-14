@@ -48,11 +48,9 @@ public class Document {
     public enum Status {
         CREATED,
 
-        DRAFT,
-
         PUBLISHED,
 
-        SIGNED_WITHOUT_VERIFY,
+        SIGNED_NOT_VERIFIED,
 
         SINGED_AND_VERIFIED,
 
@@ -63,7 +61,7 @@ public class Document {
         }
 
         public boolean isSigned() {
-            return SIGNED_WITHOUT_VERIFY == this || SINGED_AND_VERIFIED == this;
+            return SIGNED_NOT_VERIFIED == this || SINGED_AND_VERIFIED == this;
         }
 
         public boolean isVerified() {

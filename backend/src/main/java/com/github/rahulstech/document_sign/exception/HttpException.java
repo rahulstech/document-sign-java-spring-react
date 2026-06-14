@@ -22,4 +22,8 @@ public class HttpException extends RuntimeException {
     public static HttpException notFound(String message) {
         return new HttpException(404, message);
     }
+
+    public static HttpException conflict(String message) {
+        return new HttpException(409, message);
+    }
 }
