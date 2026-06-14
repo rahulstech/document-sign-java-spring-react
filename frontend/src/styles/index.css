@@ -612,3 +612,41 @@
   display: flex;
   flex-direction: column;
 }
+
+/* ===== Custom Signature Fonts ===== */
+@font-face {
+  font-family: 'Herr Von Muellerhoff';
+  src: url('../assets/fonts/HerrVonMuellerhoff-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Hurricane';
+  src: url('../assets/fonts/Hurricane-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Inspiration';
+  src: url('../assets/fonts/Inspiration-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Mea Culpa';
+  src: url('../assets/fonts/MeaCulpa-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Mrs Saint Delafield';
+  src: url('../assets/fonts/MrsSaintDelafield-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Sirivennela';
+  src: url('../assets/fonts/Sirivennela-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}

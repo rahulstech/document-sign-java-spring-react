@@ -52,6 +52,10 @@ export function UploadDocument() {
     return (
         <div className="flex flex-1 justify-center p-4">
             <div className="flex flex-col items-center gap-4">
+                <h2 className="text-3xl font-bold">Sign Document</h2>
+                
+                <p className="text-xl">eSign your Document or send sign request to others</p>
+
                 <input
                     ref={fileInputRef}
                     id="upload-document-input"
@@ -69,7 +73,7 @@ export function UploadDocument() {
                     loading={isPending}
                     onClick={handleButtonClick}
                 >
-                    {isPending ? "Uploading…" : "Upload Document"}
+                    {isPending ? "Uploading" : "Upload Document"}
                 </IconButton>
                 <p className={`text-sm ${displayError ? "text-danger" : "text-(--color-text-tertiary)"}`}>
                     {displayError ?? "Upload PDF document to sign digitally"}
