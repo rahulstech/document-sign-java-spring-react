@@ -1,4 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useDrag, useDrop } from "react-dnd";
+import { getEmptyImage } from "react-dnd-html5-backend";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -10,9 +12,143 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 interface PdfViewerProps {
     url: string;
+    signatureUrl?: string | null;
+    placedSignature?: {
+        pageNumber: number;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    } | null;
+    onSignatureDrop?: (
+        pageNumber: number,
+        size: { width: number; height: number },
+        position: { x: number; y: number }
+    ) => void;
 }
 
-export function PdfViewer({ url }: PdfViewerProps) {
+interface SignatureAnnotationProps {
+    signatureUrl: string;
+    x: number; // percentage
+    y: number; // percentage
+    width: number,
+    height: number,
+}
+
+function SignatureAnnotation(props: SignatureAnnotationProps) {
+    const imgRef = useRef<HTMLImageElement>(null);
+    const [{ isDragging }, drag, preview] = useDrag(()=>({
+        type: "SIGNATURE",
+        item: () => {
+            const rect = imgRef.current?.getBoundingClientRect();
+            return {
+                signatureUrl: props.signatureUrl,
+                width: rect ? rect.width : props.width,
+                height: rect ? rect.height : props.height
+            };
+        },
+        collect: (monitor)=> ({
+            isDragging: monitor.isDragging()
+        })
+    }));
+
+    useEffect(() => {
+        preview(getEmptyImage(), { captureDraggingState: true });
+    }, [preview]);
+
+    console.log(props);
+
+    return (
+        <img 
+            ref={(node)=> {
+                drag(node);
+                imgRef.current = node;
+            }}
+            src={props.signatureUrl}
+            style={{
+                position: "absolute",
+                left: `${props.x}%`,
+                top: `${props.y}%`,
+                width: `${props.width}px`,
+                height: `${props.height}px`,
+                maxWidth: 'none',
+                maxHeight: 'none',
+                zIndex: 10,
+                opacity: isDragging ? 0.4 : 1.0
+            }}
+        />
+    )
+}
+
+
+
+
+
+function PdfPage({ pageNum, signatureUrl, placedSignature, onSignatureDrop }) {
+    const pageRef = useRef<HTMLDivElement>(null);
+    const [{ isOver }, drop] = useDrop<{ signatureUrl: string; width: number; height: number }, unknown, { isOver: boolean }>(()=> ({
+        accept: "SIGNATURE",
+        drop: (item, monitor)=> {
+            const pageEl = pageRef.current;
+            if (!pageEl) return;
+
+            const pageRect = pageEl.getBoundingClientRect();
+            
+            const sourceOffset = monitor.getSourceClientOffset() || monitor.getClientOffset();
+            if (!sourceOffset) return;
+
+            let left = sourceOffset.x - pageRect.left;
+            let top = sourceOffset.y - pageRect.top;
+
+            const signatureWidth = item.width || 150;
+            const signatureHeight = item.height || 60;
+
+            const maxLeft = Math.max(0, pageRect.width - signatureWidth);
+            const maxTop = Math.max(0, pageRect.height - signatureHeight);
+
+            left = Math.max(0, Math.min(left, maxLeft));
+            top = Math.max(0, Math.min(top, maxTop));
+
+            const percentX = (left / pageRect.width) * 100;
+            const percentY = (top / pageRect.height) * 100;
+
+            onSignatureDrop(pageNum, item, { x: percentX, y: percentY });
+        },
+        collect: (monitor)=> ({ isOver: monitor.isOver() })
+    }), [onSignatureDrop])
+    
+
+    return (
+        <div 
+            ref={(node)=> {
+                pageRef.current = node;
+                drop(node);
+            }}
+            id={`page-${pageNum}`}
+            key={pageNum} 
+            className={`adobe-page-shadow mb-6 relative transition-all duration-200 ${
+                isOver ? "ring-4 ring-primary-500 ring-offset-2" : ""
+            }`}
+        >
+            <Page
+                pageNumber={pageNum}
+                renderTextLayer={true}
+                renderAnnotationLayer={true}
+            />
+            {signatureUrl && placedSignature && placedSignature.pageNumber === pageNum && (
+                <SignatureAnnotation 
+                    signatureUrl={signatureUrl} 
+                    x={placedSignature.x} y={placedSignature.y}
+                    width={placedSignature.width || 150} 
+                    height={placedSignature.height || 60} 
+                />
+            )}
+        </div>
+    );
+}
+
+
+export function PdfViewer({ url, signatureUrl, placedSignature, onSignatureDrop }: PdfViewerProps) {
     const [numPages, setNumPages] = useState<number>(0);
     const [currentPage, setCurrentPage] = useState<number>(1);
     const pagesRef = useRef<HTMLDivElement>(null);
@@ -40,7 +176,7 @@ export function PdfViewer({ url }: PdfViewerProps) {
             },
             {
                 root: container,
-                threshold: 0.3, // Lower threshold to trigger intersection earlier/more reliably
+                threshold: 0, // Lower threshold to trigger intersection earlier/more reliably
             }
         );
 
@@ -132,15 +268,17 @@ export function PdfViewer({ url }: PdfViewerProps) {
                         </div>
                     }
                 >
-                    {Array.from({ length: numPages }, (_, i) => (
-                        <div key={i + 1} id={`page-${i + 1}`} className="adobe-page-shadow mb-6">
-                            <Page
-                                pageNumber={i + 1}
-                                renderTextLayer={true}
-                                renderAnnotationLayer={true}
+                    {Array.from({ length: numPages }, (_, i) => {
+                        return (
+                            <PdfPage 
+                                key={i + 1}
+                                pageNum={i+1} 
+                                signatureUrl={signatureUrl} 
+                                placedSignature={placedSignature} 
+                                onSignatureDrop={onSignatureDrop} 
                             />
-                        </div>
-                    ))}
+                        )
+                    })}
                 </Document>
             </main>
         </div>
