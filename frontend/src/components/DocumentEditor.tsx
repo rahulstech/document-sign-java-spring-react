@@ -1,33 +1,16 @@
-import { PdfViewer } from "./PdfViewer"
+import { PdfViewer } from "./PdfViewer";
 import { DndProvider, useDrag, useDragLayer } from "react-dnd";
 import { HTML5Backend, getEmptyImage } from "react-dnd-html5-backend";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { DragType } from "./properties";
+import type { DocumentEditorProps, SignatureData } from "./properties";
+import { SignatureAnnotation } from "./SignatureAnnotation";
+import { useSelfSign } from "../hooks/ApiQueryHooks";
 
-interface DocumentEditorProps {
-    url: string;
-    name: string;
-    isDialogOpen: boolean;
-    signatureUrl: string | null;
-    placedSignature: {
-        pageNumber: number;
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-    } | null;
-    setPlacedSignature: (signature: {
-        pageNumber: number;
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-    } | null) => void;
-}
-
-function SignatureThumbnail({ signatureUrl }) {
+function SignatureThumbnail({ signatureUrl }: { signatureUrl: string }) {
     const imgRef = useRef<HTMLImageElement>(null);
     const [{ isDragging }, drag, preview] = useDrag(()=>({
-        type: "SIGNATURE",
+        type: DragType.SIGNATURE,
         item: () => {
             const rect = imgRef.current?.getBoundingClientRect();
             return {
@@ -57,7 +40,7 @@ function SignatureThumbnail({ signatureUrl }) {
     )
 }
 
-function CustomDragLayer() {
+function DocumentEditorDragLayer() {
     const { itemType, isDragging, item, currentOffset } = useDragLayer((monitor) => ({
         item: monitor.getItem(),
         itemType: monitor.getItemType(),
@@ -65,7 +48,7 @@ function CustomDragLayer() {
         isDragging: monitor.isDragging(),
     }));
 
-    if (!isDragging || itemType !== "SIGNATURE" || !item) {
+    if (!isDragging || itemType !== DragType.SIGNATURE || !item) {
         return null;
     }
 
@@ -92,13 +75,11 @@ function CustomDragLayer() {
                     display: currentOffset ? "block" : "none",
                 }}
             >
-                <img
-                    src={item.signatureUrl}
-                    alt="Dragging Signature"
+                <SignatureAnnotation
+                    signatureUrl={item.signatureUrl}
                     style={{
                         width: `${item.width}px`,
                         height: `${item.height}px`,
-                        objectFit: "contain",
                         opacity: 0.8,
                         border: "2px dashed var(--color-primary-500, #0066cc)",
                         borderRadius: "4px",
@@ -113,19 +94,55 @@ function CustomDragLayer() {
 
 
 export function DocumentEditor({ 
+    documentId,
     url, 
     name, 
     isDialogOpen, 
-    signatureUrl, 
-    placedSignature, 
-    setPlacedSignature 
+    signatureUrl,
+    setIsSave
 }: DocumentEditorProps) {
 
-    const handleSignatureDrop = (pageNumber, size, position) => {
-        const dropInfo = { pageNumber, width: size.width, height: size.height, x: position.x, y: position.y };
+    const [placedSignature, setPlacedSignature] = useState<SignatureData | null>(null);
+    const { isPending, isSuccess, mutateAsync } = useSelfSign();
+
+    const handleSignatureDrop = (
+        pageNumber: number,
+        position: { x: number; y: number; width: number; height: number }
+    ) => {
+        const dropInfo = { pageNumber, ...position };
         setPlacedSignature(dropInfo);
         console.log("Signature Drop Completed:", dropInfo);
     };
+
+    const handleSign = async () => {
+        if (!placedSignature || !signatureUrl) return;
+
+        try {
+            const response = await fetch(signatureUrl);
+            const blob = await response.blob();
+            const { pageNumber, x, y, width, height } = placedSignature;
+
+            await mutateAsync({
+                documentId,
+                signature: {
+                    type: blob.type,
+                    size: blob.size,
+                    blob
+                },
+                pageNumber,
+                bounds: { x, y, width, height }
+            });
+            alert("Document signed successfully!");
+        } catch (err) {
+            console.error("Signing failed:", err);
+            alert("Failed to sign document.");
+        }
+    };
+
+    if (isSuccess) {
+        setIsSave(isSuccess);
+        return null;
+    }
 
     return (
         <DndProvider backend={HTML5Backend}>
@@ -157,27 +174,27 @@ export function DocumentEditor({
                             <div className="w-full bg-white rounded border border-(--color-border-subtle) p-2 flex items-center justify-center shadow-inner">
                                 <SignatureThumbnail signatureUrl={signatureUrl} />
                             </div>
-                            {placedSignature && (
-                                <div className="mt-4 p-3 bg-white rounded border border-(--color-border-subtle) text-xs text-(--color-text-secondary) flex flex-col gap-1 shadow-sm">
-                                    <span className="font-semibold text-(--color-text-primary) text-sm mb-1">
-                                        Placement Details
-                                    </span>
-                                    <div>
-                                        <span className="font-medium text-(--color-text-primary)">Page:</span> {placedSignature.pageNumber}
-                                    </div>
-                                    <div>
-                                        <span className="font-medium text-(--color-text-primary)">Size:</span> {Math.round(placedSignature.width)}px × {Math.round(placedSignature.height)}px
-                                    </div>
-                                    <div>
-                                        <span className="font-medium text-(--color-text-primary)">Position:</span> Left {placedSignature.x.toFixed(2)}%, Top {placedSignature.y.toFixed(2)}%
-                                    </div>
-                                </div>
-                            )}
+                            <p className="text-xs text-(--color-text-secondary) mt-2 leading-relaxed">
+                                Drag this signature and drop in a page. Below the signature you can find a unqiue  id. You can verify signture id in document audit log for audit purpose from the document dashboard.
+                            </p>
                         </>
                     )}
+                    
+                    <div className="mt-auto pt-4">
+                        <button
+                            type="button"
+                            disabled={!placedSignature || isPending}
+                            className={`adobe-btn adobe-btn-primary w-full py-2 flex items-center justify-center text-sm font-semibold transition-all ${
+                                !placedSignature ? "opacity-50 cursor-not-allowed" : ""
+                            }`}
+                            onClick={handleSign}
+                        >
+                            Sign
+                        </button>
+                    </div>
                 </aside>
             </div>
-            <CustomDragLayer />
+            <DocumentEditorDragLayer />
         </DndProvider>
         
     )

@@ -27,8 +27,11 @@ public class Document {
     @Column(name = "doc_url", nullable = false)
     private String url;
 
+    @Column(name = "signed_doc_url")
+    private String signedUrl;
+
     @Column(name = "doc_type", nullable = false)
-    private String type;
+    private String mimeType;
 
     @Column(name = "doc_name", nullable = false)
     private String name;
@@ -48,24 +51,24 @@ public class Document {
     public enum Status {
         CREATED,
 
-        PUBLISHED,
+        PENDING,
 
-        SIGNED_NOT_VERIFIED,
+        SIGNED,
 
-        SINGED_AND_VERIFIED,
+        VERIFIED,
 
         ;
 
-        public boolean isPublished() {
-            return ordinal() >= PUBLISHED.ordinal();
+        public boolean isPending() {
+            return ordinal() <= PENDING.ordinal();
         }
 
         public boolean isSigned() {
-            return SIGNED_NOT_VERIFIED == this || SINGED_AND_VERIFIED == this;
+            return SIGNED == this || VERIFIED == this;
         }
 
         public boolean isVerified() {
-            return SINGED_AND_VERIFIED == this;
+            return VERIFIED == this;
         }
     }
 }

@@ -1,27 +1,7 @@
 import { useState } from "react";
 import AddIcon from "../assets/icons/add.svg";
 import DeleteIcon from "../assets/icons/delete.svg";
-
-type MemberRole = "SIGNER" | "WITNESS" | "VERIFIER";
-
-interface MemberItem {
-    key: string;
-    name: string;
-    email: string;
-    role: MemberRole;
-    nameError?: string;
-    emailError?: string;
-}
-
-interface MemberInputProps {
-    member: MemberItem;
-    onChange: (key: string, updatedFields: Partial<MemberItem>) => void;
-    onRemove: (key: string) => void;
-}
-
-interface MembersInputListProps {
-    onApply?: (members: { name: string; email: string; role: MemberRole }[]) => void;
-}
+import type { MemberRole, MemberItem, MemberInputProps, MembersInputListProps } from "./properties";
 
 
 

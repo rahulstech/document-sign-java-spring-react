@@ -2,6 +2,8 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { getEmptyImage } from "react-dnd-html5-backend";
 import { Document, Page, pdfjs } from "react-pdf";
+import { DragType } from "./properties";
+import type { PdfViewerProps, SignatureAnnotationProps, PdfPageProps } from "./properties";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
@@ -10,41 +12,20 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     import.meta.url,
 ).toString();
 
-interface PdfViewerProps {
-    url: string;
-    signatureUrl?: string | null;
-    placedSignature?: {
-        pageNumber: number;
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-    } | null;
-    onSignatureDrop?: (
-        pageNumber: number,
-        size: { width: number; height: number },
-        position: { x: number; y: number }
-    ) => void;
-}
 
-interface SignatureAnnotationProps {
-    signatureUrl: string;
-    x: number; // percentage
-    y: number; // percentage
-    width: number,
-    height: number,
-}
+import { SignatureAnnotation as VisualSignatureAnnotation } from "./SignatureAnnotation";
 
 function SignatureAnnotation(props: SignatureAnnotationProps) {
-    const imgRef = useRef<HTMLImageElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
     const [{ isDragging }, drag, preview] = useDrag(()=>({
-        type: "SIGNATURE",
+        type: DragType.SIGNATURE,
         item: () => {
-            const rect = imgRef.current?.getBoundingClientRect();
+            const imgEl = containerRef.current?.querySelector("img");
+            const imgRect = imgEl?.getBoundingClientRect() || containerRef.current?.getBoundingClientRect();
             return {
                 signatureUrl: props.signatureUrl,
-                width: rect ? rect.width : props.width,
-                height: rect ? rect.height : props.height
+                width: imgRect ? imgRect.width : 150,
+                height: imgRect ? imgRect.height : 60
             };
         },
         collect: (monitor)=> ({
@@ -56,38 +37,32 @@ function SignatureAnnotation(props: SignatureAnnotationProps) {
         preview(getEmptyImage(), { captureDraggingState: true });
     }, [preview]);
 
-    console.log(props);
-
     return (
-        <img 
+        <VisualSignatureAnnotation 
             ref={(node)=> {
                 drag(node);
-                imgRef.current = node;
+                containerRef.current = node;
             }}
-            src={props.signatureUrl}
+            signatureUrl={props.signatureUrl}
             style={{
                 position: "absolute",
                 left: `${props.x}%`,
                 top: `${props.y}%`,
-                width: `${props.width}px`,
-                height: `${props.height}px`,
+                width: `${props.width}%`,
+                height: `${props.height}%`,
                 maxWidth: 'none',
                 maxHeight: 'none',
                 zIndex: 10,
-                opacity: isDragging ? 0.4 : 1.0
+                opacity: isDragging ? 0.4 : 1.0,
             }}
         />
     )
 }
 
-
-
-
-
-function PdfPage({ pageNum, signatureUrl, placedSignature, onSignatureDrop }) {
+function PdfPage({ pageNum, signatureUrl, placedSignature, onSignatureDrop }: PdfPageProps) {
     const pageRef = useRef<HTMLDivElement>(null);
     const [{ isOver }, drop] = useDrop<{ signatureUrl: string; width: number; height: number }, unknown, { isOver: boolean }>(()=> ({
-        accept: "SIGNATURE",
+        accept: DragType.SIGNATURE,
         drop: (item, monitor)=> {
             const pageEl = pageRef.current;
             if (!pageEl) return;
@@ -111,8 +86,15 @@ function PdfPage({ pageNum, signatureUrl, placedSignature, onSignatureDrop }) {
 
             const percentX = (left / pageRect.width) * 100;
             const percentY = (top / pageRect.height) * 100;
+            const percentWidth = (signatureWidth / pageRect.width) * 100;
+            const percentHeight = (signatureHeight / pageRect.height) * 100;
 
-            onSignatureDrop(pageNum, item, { x: percentX, y: percentY });
+            onSignatureDrop?.(pageNum, {
+                x: percentX,
+                y: percentY,
+                width: percentWidth,
+                height: percentHeight
+            });
         },
         collect: (monitor)=> ({ isOver: monitor.isOver() })
     }), [onSignatureDrop])
@@ -138,9 +120,10 @@ function PdfPage({ pageNum, signatureUrl, placedSignature, onSignatureDrop }) {
             {signatureUrl && placedSignature && placedSignature.pageNumber === pageNum && (
                 <SignatureAnnotation 
                     signatureUrl={signatureUrl} 
-                    x={placedSignature.x} y={placedSignature.y}
-                    width={placedSignature.width || 150} 
-                    height={placedSignature.height || 60} 
+                    x={placedSignature.x}
+                    y={placedSignature.y}
+                    width={placedSignature.width}
+                    height={placedSignature.height}
                 />
             )}
         </div>

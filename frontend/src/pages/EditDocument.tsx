@@ -1,6 +1,6 @@
 import { useState } from "react"
-import { useParams } from "react-router-dom"
-import { useGetDocumentById } from "../hooks/ApiQueryHooks"
+import { useNavigate, useParams } from "react-router-dom"
+import { useGetDocumentInfoById } from "../hooks/ApiQueryHooks"
 import RefreshIcon from "../assets/icons/refresh.svg"
 import { IconButton } from "../components/IconButton"
 import { DocumentEditor } from "../components/DocumentEditor"
@@ -8,16 +8,17 @@ import { SignatureDialog, type SingedBy } from "../components/SignatureDialog"
 
 export function EditDocument() {
     const { docId } = useParams()
-    const { isLoading, data, isError, error, refetch } = useGetDocumentById(docId!);
+    const { isLoading, data, isError, error, refetch } = useGetDocumentInfoById(docId!);
     const [isDialogOpen, setIsDialogOpen] = useState(true);
     const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
-    const [placedSignature, setPlacedSignature] = useState<{
-        pageNumber: number;
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-    } | null>(null);
+    const [isSave, setIsSave] = useState(false);
+    const navigate = useNavigate();
+
+
+    if (isSave) {
+        navigate(`/docs/${docId}/dashboard`, { replace: true });
+        return null;
+    }
 
     if (isLoading) {
         return (
@@ -49,15 +50,28 @@ export function EditDocument() {
         )
     }
 
+    if (!data || !data.canEdit) {
+        return (
+            <>
+                <p>Action Not Allowed</p>
+                {
+                    setTimeout(()=>{
+                        navigate(`/docs/${docId}/dashboard`, { replace: true })
+                    }, 3000)
+                }
+            </>
+        )
+    }
+
     return (
         <>
             <DocumentEditor 
+                documentId={docId!}
                 url={data!.url} 
                 name={data!.name} 
                 isDialogOpen={isDialogOpen}
                 signatureUrl={signatureUrl}
-                placedSignature={placedSignature}
-                setPlacedSignature={setPlacedSignature}
+                setIsSave={setIsSave}
             />
             <SignatureDialog 
                 isOpen={isDialogOpen} 
@@ -65,7 +79,6 @@ export function EditDocument() {
                     setIsDialogOpen(false);
                     if (type === "ONLY_ME" && applyData?.signature instanceof Blob) {
                         setSignatureUrl(URL.createObjectURL(applyData.signature));
-                        setPlacedSignature(null);
                     }
                 }}
             />

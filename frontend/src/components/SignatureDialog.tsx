@@ -1,13 +1,8 @@
-import { useState } from "react"
-import { SignatureInput } from "./SignatureInput"
-import { MembersInputList } from "./MembersInputList"
-
-export type SingedBy = "ONLY_ME" | "MULTIPLE";
-
-export interface SignatureDialogProps {
-    isOpen: boolean;
-    onApply: (type: SingedBy, data: any) => void;
-}
+import { useState } from "react";
+import { SignatureInput } from "./SignatureInput";
+import { MembersInputList } from "./MembersInputList";
+export type { SingedBy } from "./properties";
+import type { SignatureDialogProps } from "./properties";
 
 export function SignatureDialog({ isOpen, onApply }: SignatureDialogProps) {
     const [activeTab, setActiveTab] = useState<"me" | "others">("me");
@@ -55,9 +50,8 @@ export function SignatureDialog({ isOpen, onApply }: SignatureDialogProps) {
                                 Sign the document as the only signer. You can choose one of the signature styles for digital signature or upload your signature as an image file.
                             </p>
                             <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-                                {/* TODO: supply the current loggedin user name */}
-                                <SignatureInput name="Rahul Bagchi" onApply={(blob) => {
-                                    onApply("ONLY_ME", { name: "Rahul Bagchi", email: "domain@email.com", signature: blob });
+                                <SignatureInput onApply={(blob, typedName) => {
+                                    onApply("ONLY_ME", { name: typedName, signature: blob });
                                 }} />
                             </div>
                         </div>

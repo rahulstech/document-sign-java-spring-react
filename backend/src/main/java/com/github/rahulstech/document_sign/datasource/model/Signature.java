@@ -33,6 +33,9 @@ public class Signature {
     @Column(name = "sig_data", columnDefinition = "jsonb", nullable = false, updatable = false)
     private Data data;
 
+    @Column(name = "client_ip",  nullable = false, updatable = false)
+    private String clientIP;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;

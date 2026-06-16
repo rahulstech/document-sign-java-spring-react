@@ -1,4 +1,4 @@
-package com.github.rahulstech.document_sign.service.upload;
+package com.github.rahulstech.document_sign.service.storageservice;
 
 import com.github.rahulstech.document_sign.dto.CreateUploadUrlRequest;
 import com.github.rahulstech.document_sign.dto.CreateUploadUrlResponse;
@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class UploadService {
+public class StorageService {
 
     private static final Logger logger = LoggerFactory.getLogger("UploadServiceProdImpl");
 
@@ -73,6 +73,21 @@ public class UploadService {
         return new CreateUploadUrlResponse(url, key);
     }
 
+    public SaveUploadResult saveUpload(String srcKey, String... prefixes) {
+        var info = getFileInfo(srcKey);
+        var contentType = (String) info.get("content-mimeType");
+        var contentLength = (Long) info.get("content-length");
+        var ext = getExtensionName(contentType);
+        var publicKey = createPublicKey(ext, prefixes);
+        var destKey = createDestinationKey(publicKey);
+        var publicUrl = createPublicUrl(publicKey);
+
+        // copy from temp to public directory
+        copy(srcKey, destKey);
+
+        return new SaveUploadResult(publicUrl, contentType, contentLength);
+    }
+
     private Map<String,Object> getFileInfo(String key) {
         var cmd = HeadObjectRequest.builder()
                 .bucket(bucketName)
@@ -89,26 +104,10 @@ public class UploadService {
 
         Map<String,Object> info = new HashMap<>();
         info.put("content-length", headRes.contentLength());
-        info.put("content-type", headRes.contentType());
+        info.put("content-mimeType", headRes.contentType());
 
         return info;
     }
-
-    public SaveUploadResult saveUpload(String srcKey, String... prefixes) {
-        var info = getFileInfo(srcKey);
-        var contentType = (String) info.get("content-type");
-        var contentLength = (Long) info.get("content-length");
-        var ext = getExtensionName(contentType);
-        var publicKey = createPublicKey(ext, prefixes);
-        var destKey = createDestinationKey(publicKey);
-        var publicUrl = createPublicUrl(publicKey);
-
-        // copy from temp to public directory
-        copy(srcKey, destKey);
-
-        return new SaveUploadResult(publicUrl, contentType, contentLength);
-    }
-
 
     private void copy(String srcKey, String destKey) {
         var cmd = CopyObjectRequest.builder()

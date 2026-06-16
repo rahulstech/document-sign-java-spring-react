@@ -1,6 +1,7 @@
 import { useState } from "react";
 import TextIcon from "../assets/icons/text.svg";
 import UploadIcon from "../assets/icons/upload_file.svg";
+import type { SignatureInputProps } from "./properties";
 
 const FONTS = [
     "Herr Von Muellerhoff",
@@ -21,11 +22,6 @@ interface RenderUploadSignatureProps {
     uploadedImage: string | null;
     errorMsg: string | null;
     onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}
-
-interface SignatureInputProps {
-    name: string,
-    onApply?: (signatureBlob: Blob) => void;
 }
 
 
@@ -137,7 +133,7 @@ function createSignatureBlob(name: string, fontFamily: string): Promise<Blob> {
         canvas.width = textWidth + paddingX * 2;
         canvas.height = 28 + paddingY * 2; // size 20pt is approx 27px
 
-        ctx.fillStyle = "#ffffff";
+        ctx.fillStyle = "#00000000"; // full tranparent background
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         ctx.font = "20pt " + fontFamily;
@@ -161,19 +157,71 @@ async function getBlobFromDataUrl(dataUrl: string): Promise<Blob> {
     return await response.blob();
 }
 
-export function SignatureInput({ name, onApply }: SignatureInputProps) {
+interface TextTabContentProps {
+    fullName: string;
+    setFullName: (name: string) => void;
+    selectedFont: string;
+    setSelectedFont: (font: string) => void;
+}
+
+function TextTabContent({ fullName, setFullName, selectedFont, setSelectedFont }: TextTabContentProps) {
+    return (
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5 shrink-0">
+                <label className="text-xs font-bold text-(--color-text-secondary) uppercase tracking-wider">
+                    Full Name
+                </label>
+                <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Enter your full name"
+                    className="w-full px-3 py-2 border border-(--color-border-default) rounded-md text-sm text-text-primary focus:outline-none focus:border-primary-500 bg-surface-panel transition-all"
+                />
+            </div>
+            <span className="text-xs font-bold text-(--color-text-secondary) uppercase tracking-wider shrink-0">
+                Select Style
+            </span>
+            <RenderTextSignatures
+                name={fullName}
+                selectedFont={selectedFont}
+                onSignatureSelected={setSelectedFont}
+            />
+        </div>
+    );
+}
+
+interface UploadTabContentProps {
+    uploadedImage: string | null;
+    errorMsg: string | null;
+    handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+function UploadTabContent({ uploadedImage, errorMsg, handleFileUpload }: UploadTabContentProps) {
+    return (
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            <RenderUploadSignature
+                uploadedImage={uploadedImage}
+                errorMsg={errorMsg}
+                onFileUpload={handleFileUpload}
+            />
+        </div>
+    );
+}
+
+export function SignatureInput({ onApply }: SignatureInputProps) {
     const [activeTab, setActiveTab] = useState<"text" | "upload">("text");
+    const [fullName, setFullName] = useState<string>("Your Name");
     const [selectedFont, setSelectedFont] = useState<string>("Herr Von Muellerhoff");
     const [uploadedImage, setUploadedImage] = useState<string | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     const handleApply = async () => {
-        if (!onApply) return;
 
         if (activeTab === "text") {
             try {
-                const blob = await createSignatureBlob(name, selectedFont);
-                onApply(blob);
+                const blob = await createSignatureBlob(fullName, selectedFont);
+                onApply(blob, fullName);
             } catch (err) {
                 setErrorMsg("Failed to generate signature.");
             }
@@ -263,21 +311,18 @@ export function SignatureInput({ name, onApply }: SignatureInputProps) {
                 {/* Right Column: Tab Contents (overflow-hidden) */}
                 <div className="flex-1 border border-(--color-border-default) rounded-md bg-surface-card overflow-hidden p-6 flex flex-col min-h-0">
                     {activeTab === "text" ? (
-                        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-                            <RenderTextSignatures
-                                name={name}
-                                selectedFont={selectedFont}
-                                onSignatureSelected={setSelectedFont}
-                            />
-                        </div>
+                        <TextTabContent
+                            fullName={fullName}
+                            setFullName={setFullName}
+                            selectedFont={selectedFont}
+                            setSelectedFont={setSelectedFont}
+                        />
                     ) : (
-                        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-                            <RenderUploadSignature
-                                uploadedImage={uploadedImage}
-                                errorMsg={errorMsg}
-                                onFileUpload={handleFileUpload}
-                            />
-                        </div>
+                        <UploadTabContent
+                            uploadedImage={uploadedImage}
+                            errorMsg={errorMsg}
+                            handleFileUpload={handleFileUpload}
+                        />
                     )}
                 </div>
             </div>

@@ -2,14 +2,17 @@ package com.github.rahulstech.document_sign.dto;
 
 import com.github.rahulstech.document_sign.datasource.model.Document;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public record GetDocumentResponse(
     UUID id,
     String url,
-    String type,
+    String signedUrl,
+    String mimeType,
     String name,
-    Boolean isPublished,
+    OffsetDateTime createdAt,
+    Boolean isPending,
     Boolean isSigned,
     Boolean isVerified
 ) {
@@ -19,9 +22,11 @@ public record GetDocumentResponse(
         return new GetDocumentResponse(
                 doc.getId(),
                 doc.getUrl(),
-                doc.getType(),
+                doc.getSignedUrl(),
+                doc.getMimeType(),
                 doc.getName(),
-                status.isPublished(),
+                doc.getCreatedAt(),
+                status.isPending(),
                 status.isSigned(),
                 status.isVerified()
         );

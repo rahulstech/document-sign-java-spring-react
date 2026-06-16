@@ -1,17 +1,4 @@
-import type { ButtonHTMLAttributes } from "react";
-
-interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-    /** Path to the icon SVG */
-    icon: string;
-    /** Alt text for the icon */
-    iconAlt?: string;
-    /** Icon size classes (default: "w-5 h-5") */
-    iconClassName?: string;
-    /** Show a spinner instead of the icon */
-    loading?: boolean;
-    /** Spinner color classes (default: "border-white border-t-transparent") */
-    spinnerClassName?: string;
-}
+import type { IconButtonProps } from "./properties";
 
 export function IconButton({
     icon,
