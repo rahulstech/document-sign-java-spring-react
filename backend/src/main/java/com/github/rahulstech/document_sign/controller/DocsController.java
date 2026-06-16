@@ -23,27 +23,19 @@ public class DocsController {
 
     private final DocumentRepository docRepo;
 
-
-    @PostMapping("/upload/url")
-    public ResponseEntity<@NonNull CreateDocumentUploadUrlResponse> createDocumentUploadUrl(@Valid @RequestBody CreateDocumentUploadUrlRequest req) {
-        var result = uploadService.createUploadUrl(req.toCreateUploadUrlParam());
-        var res = CreateDocumentUploadUrlResponse.fromCreateUploadUrlResult(result);
-        return ResponseEntity.status(201).body(res);
-    }
-
-    @PostMapping("/upload/confirm")
-    public ConfirmDocumentUploadResponse confirmDocumentUpload(@Valid @RequestBody ConfirmDocumentUploadRequest req) {
+    @PostMapping("/new")
+    public ConfirmDocumentUploadResponse confirmDocumentUpload(@Valid @RequestBody ConfirmDocumentUploadRequest body) {
         var userId = "guest"; // TODO: get user id when auth implemented
 
         // save document in public storage
-        var result = uploadService.saveUpload(userId, req.key());
+        var result = uploadService.saveUpload(body.key(), userId);
 
         // create document
         var document = new Document();
         document.setUserId(userId);
         document.setUrl(result.publicUrl());
         document.setType(result.contentType());
-        document.setName(req.name());
+        document.setName(body.name());
 
         // save document in database
         var savedDocument = docRepo.save(document);

@@ -1,5 +1,7 @@
 package com.github.rahulstech.document_sign.service.upload;
 
+import com.github.rahulstech.document_sign.dto.CreateUploadUrlRequest;
+import com.github.rahulstech.document_sign.dto.CreateUploadUrlResponse;
 import com.github.rahulstech.document_sign.exception.HttpException;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -13,9 +15,11 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +28,16 @@ public class UploadService {
     private static final Logger logger = LoggerFactory.getLogger("UploadServiceProdImpl");
 
     private static final long SIGNATURE_DURATION_SECONDS = 24 * 3600; // 24 hours
+
+    private static final HashMap<String,String> CONTENT_TYPE_TO_EXTENSION = new HashMap<>();
+
+    static {
+        CONTENT_TYPE_TO_EXTENSION.put("application/pdf", ".pdf");
+        CONTENT_TYPE_TO_EXTENSION.put("image/jpg",".jpg");
+        CONTENT_TYPE_TO_EXTENSION.put("image/jpeg",".jpeg");
+        CONTENT_TYPE_TO_EXTENSION.put("image/png",".png");
+        CONTENT_TYPE_TO_EXTENSION.put("image/webp",".webp");
+    }
 
     @Value("${AWS_S3_BUCKET_NAME}")
     private String bucketName;
@@ -40,13 +54,13 @@ public class UploadService {
     private final S3Client client;
     private final S3Presigner presigner;
 
-    public CreateUploadUrlResult createUploadUrl(CreateUploadUrlParam params) {
+    public CreateUploadUrlResponse createUploadUrl(CreateUploadUrlRequest req) {
         var key = createTemporaryKey();
         var cmd = PutObjectRequest.builder()
                 .bucket(bucketName)
                 .key(key)
-                .contentType(params.contentType())
-                .contentLength(params.contentLength())
+                .contentType(req.type())
+                .contentLength(req.size())
                 .build();
 
         var o = presigner.presignPutObject(builder ->
@@ -56,7 +70,7 @@ public class UploadService {
 
         var url = o.url().toString();
 
-        return new CreateUploadUrlResult(url, key);
+        return new CreateUploadUrlResponse(url, key);
     }
 
     private Map<String,Object> getFileInfo(String key) {
@@ -80,13 +94,14 @@ public class UploadService {
         return info;
     }
 
-    public SaveUploadResult saveUpload(String userId, String srcKey) {
+    public SaveUploadResult saveUpload(String srcKey, String... prefixes) {
         var info = getFileInfo(srcKey);
         var contentType = (String) info.get("content-type");
         var contentLength = (Long) info.get("content-length");
-        var userKey = createUserKey(userId);
-        var destKey = createPublicKey(userKey);
-        var publicUrl = createPublicUrl(userKey);
+        var ext = getExtensionName(contentType);
+        var publicKey = createPublicKey(ext, prefixes);
+        var destKey = createDestinationKey(publicKey);
+        var publicUrl = createPublicUrl(publicKey);
 
         // copy from temp to public directory
         copy(srcKey, destKey);
@@ -115,18 +130,30 @@ public class UploadService {
         return tempDir+suffix;
     }
 
-    private String createUserKey(String userId) {
-        var suffix = UUID.randomUUID().toString();
-        var ext = ".pdf"; // TODO: in future if other document types allowed, choose correct extension
-        return userId+"/"+suffix+ext;
+    private String createPublicKey(String ext, String... prefixes) {
+        var prefix = Arrays.stream(prefixes)
+                .map(String::trim)
+                .filter(String::isBlank)
+                .collect(Collectors.joining("/"));
+        var suffix = UUID.randomUUID()+ext;
+        if (prefix.isBlank()) {
+            return suffix;
+        }
+        else {
+            return prefix+"/"+suffix;
+        }
     }
 
-    private String createPublicKey(String suffix) {
+    private String createDestinationKey(String suffix) {
         return publicDir+suffix;
     }
 
     private String createPublicUrl(String publicKey) {
         return cdnBaseUrl+"/"+publicKey;
+    }
+
+    public String getExtensionName(String contentType) {
+        return CONTENT_TYPE_TO_EXTENSION.getOrDefault(contentType, ".bin");
     }
 }
 

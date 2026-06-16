@@ -42,8 +42,12 @@ public class Member {
     @Column(nullable = false)
     private Role role;
 
-    @Column(name = "is_action_pending", nullable = false)
-    private Boolean actionPending = Boolean.TRUE;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "action", nullable = false)
+    private Action action = Action.PENDING;
+
+    @Column(name = "action_at")
+    private OffsetDateTime actionedAt;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false,  updatable = false)
@@ -54,11 +58,33 @@ public class Member {
     private OffsetDateTime lastModified;
 
 
+
+
     public enum Role {
         SIGNER,
 
         WITNESS,
 
         VERIFIER,
+    }
+
+    public enum Action {
+        PENDING,
+
+        SIGNED,
+
+        WITNESSED,
+
+        VERIFIED,
+
+        DECLINED,
+
+        ;
+
+        public boolean isPending() { return this == PENDING; }
+
+        public boolean isDone() { return ordinal() > PENDING.ordinal(); }
+
+        public boolean isDeclined() { return this == DECLINED; }
     }
 }
