@@ -4,7 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -49,15 +50,16 @@ public class Member {
     @Column(name = "action_at")
     private OffsetDateTime actionedAt;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "action_data", columnDefinition = "jsonb")
+    private SignatureData actionData;
+
+    @Column(name = "client_ip")
+    private String clientIP;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false,  updatable = false)
     private OffsetDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "last_modified", nullable = false)
-    private OffsetDateTime lastModified;
-
-
 
 
     public enum Role {
@@ -87,4 +89,13 @@ public class Member {
 
         public boolean isDeclined() { return this == DECLINED; }
     }
+
+    public record SignatureData(
+        String url,
+        Integer pageNumber,
+        Double left,
+        Double top,
+        Double width,
+        Double height
+    ) {}
 }

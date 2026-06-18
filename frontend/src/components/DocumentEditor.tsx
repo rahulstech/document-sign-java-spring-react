@@ -107,7 +107,7 @@ export function DocumentEditor({
 
     const handleSignatureDrop = (
         pageNumber: number,
-        position: { x: number; y: number; width: number; height: number }
+        position: { left: number; top: number; width: number; height: number }
     ) => {
         const dropInfo = { pageNumber, ...position };
         setPlacedSignature(dropInfo);
@@ -120,7 +120,7 @@ export function DocumentEditor({
         try {
             const response = await fetch(signatureUrl);
             const blob = await response.blob();
-            const { pageNumber, x, y, width, height } = placedSignature;
+            const { pageNumber, left, top, width, height } = placedSignature;
 
             await mutateAsync({
                 documentId,
@@ -130,11 +130,10 @@ export function DocumentEditor({
                     blob
                 },
                 pageNumber,
-                bounds: { x, y, width, height }
+                bounds: { left, top, width, height }
             });
-            alert("Document signed successfully!");
+
         } catch (err) {
-            console.error("Signing failed:", err);
             alert("Failed to sign document.");
         }
     };

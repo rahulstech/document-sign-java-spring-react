@@ -1,7 +1,8 @@
+import { useState, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useGetDocumentById } from "../hooks/ApiQueryHooks";
-import RefreshIcon from "../assets/icons/refresh.svg";
-import { IconButton } from "../components/IconButton";
+import { LoadingView } from "../components/LoadingView";
+import { ErrorWithRetryView } from "../components/ErrorWithRetryView";
 
 function formatCreatedAt(dateStr: string): string {
     if (!dateStr) return "";
@@ -31,30 +32,43 @@ function formatCreatedAt(dateStr: string): string {
 export function DocumentDashboard() {
     const { docId } = useParams();
     const { isLoading, isError, error, data, refetch } = useGetDocumentById(docId || "");
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
 
     const statuses: { label: string; color: string; bgColor: string }[] = [];
 
     if (data) {
-        if (data.isSigned || data.isVerified) {
-            if (data.isSigned) {
-                statuses.push({
-                    label: "Singed",
-                    color: "#91D06C",
-                    bgColor: "rgba(145, 208, 108, 0.20)",
-                });
-            }
-            if (data.isVerified) {
-                statuses.push({
-                    label: "Verified",
-                    color: "#91D06C",
-                    bgColor: "rgba(145, 208, 108, 0.4)",
-                });
-            }
-        } else if (data.isPending) {
+        if (data.isPending) {
             statuses.push({
                 label: "Pending",
                 color: "#FF5959",
                 bgColor: "rgba(255, 89, 89, 0.4)",
+            });
+        }
+        if (data.isSigned) {
+            statuses.push({
+                label: "Signed",
+                color: "#91D06C",
+                bgColor: "rgba(145, 208, 108, 0.20)",
+            });
+        }
+        if (data.isVerified) {
+            statuses.push({
+                label: "Verified",
+                color: "#91D06C",
+                bgColor: "rgba(145, 208, 108, 0.4)",
             });
         }
     }
@@ -64,30 +78,13 @@ export function DocumentDashboard() {
             <div className="w-full max-w-[900px] mx-auto px-4">
                 <h1 className="text-2xl font-bold mb-4">Document Details</h1>
 
-                {isLoading && (
-                    <div className="w-4/12 mx-auto pt-12">
-                        <div className="adobe-card flex items-center gap-3 px-6 py-4">
-                            <span className="inline-block w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-                            <span className="text-sm text-(--color-text-secondary)">Loading your document</span>
-                        </div>
-                    </div>
-                )}
+                {isLoading && <LoadingView message="Loading your document" />}
 
                 {(isError || (!isLoading && !data)) && (
-                    <div className="w-4/12 mx-auto pt-12">
-                        <div className="adobe-card flex flex-col items-center gap-4 px-8 py-6">
-                            <p className="text-xl text-wrap text-danger">{error?.message || "Failed to load document."}</p>
-                            <IconButton
-                                className="adobe-btn-primary rounded-full"
-                                icon={RefreshIcon}
-                                iconAlt="Retry"
-                                iconClassName="w-4 h-4 filter-[invert(1)]"
-                                onClick={() => refetch()}
-                            >
-                                Retry
-                            </IconButton>
-                        </div>
-                    </div>
+                    <ErrorWithRetryView
+                        message={error?.message || "Failed to load document."}
+                        onRetry={() => refetch()}
+                    />
                 )}
 
                 {!isLoading && !isError && data && (
@@ -99,15 +96,50 @@ export function DocumentDashboard() {
                                 <h2 className="text-lg font-bold text-text-primary break-all">{data.name}</h2>
                                 <span className="text-xs text-text-secondary font-mono mt-1 block">{data.id}</span>
                             </div>
-                            <a
-                                href={data.url}
-                                download={data.name}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="adobe-btn adobe-btn-primary px-4 py-2 text-sm font-semibold select-none shrink-0"
-                            >
-                                Download
-                            </a>
+                            <div className="relative inline-flex rounded-md shadow-sm shrink-0" ref={dropdownRef}>
+                                <a
+                                    href={data.url}
+                                    download={data.name}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="adobe-btn adobe-btn-primary px-4 py-2 text-sm font-semibold select-none rounded-r-none border-r border-adobe-red-dark"
+                                >
+                                    Download
+                                </a>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                    disabled={!data.isSigned}
+                                    className={`adobe-btn adobe-btn-primary px-3 py-2 text-sm font-semibold select-none rounded-l-none flex items-center justify-center ${
+                                        !data.isSigned ? "opacity-50 cursor-not-allowed" : ""
+                                    }`}
+                                >
+                                    <svg
+                                        className="w-4 h-4 fill-current"
+                                        viewBox="0 0 20 20"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                        <path
+                                            fillRule="evenodd"
+                                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                            clipRule="evenodd"
+                                        />
+                                    </svg>
+                                </button>
+                                {isDropdownOpen && (
+                                    <div className="absolute right-0 top-full mt-1 w-48 bg-surface-card border border-border-default rounded-md shadow-lg z-10 py-1">
+                                        <a
+                                            href={`${import.meta.env.VITE_API_BASE_URL}/docs/${data.id}/download-signed`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="block w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-gray-100 select-none cursor-pointer"
+                                            onClick={() => setIsDropdownOpen(false)}
+                                        >
+                                            Download Signed
+                                        </a>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Divider */}

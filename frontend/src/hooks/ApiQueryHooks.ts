@@ -20,7 +20,7 @@ export function useGetDocumentById(docId: string): UseQueryResult<Document,Error
 
 export function useGetDocumentInfoById(docId: string): UseQueryResult<DocumentInfo,Error> {
     return useQuery<DocumentInfo, Error>({
-        queryKey: ["document", docId],
+        queryKey: ["document", "info", docId],
         queryFn: () => getDocumentInfoById(docId),
         enabled: !!docId,
     })
@@ -30,8 +30,8 @@ export function useSelfSign() {
     const client = useQueryClient();
     return useMutation<void,Error,SelfSignRequest>({
         mutationFn: selfSign,
-        onSuccess: (_,{ documentId })=> {
-            client.fetchQuery({ queryKey: ["document", documentId] })
+        onSuccess: (_, { documentId })=> {
+            client.invalidateQueries({ queryKey: ["document", documentId] });
         },
     });
 }

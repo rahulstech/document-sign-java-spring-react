@@ -10,6 +10,8 @@ import org.jspecify.annotations.NonNull;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/docs/{doc_id}/signature")
 @CrossOrigin("*")
@@ -22,7 +24,7 @@ public class SignatureController {
 
 
     @PostMapping("/self")
-    public ResponseEntity<@NonNull Void> signedByMe(@PathVariable("doc_id") String docId, @Valid @RequestBody SelfSignRequest body, HttpServletRequest req) {
+    public ResponseEntity<@NonNull Void> signedByMe(@PathVariable("doc_id") UUID docId, @Valid @RequestBody SelfSignRequest body, HttpServletRequest req) {
 
         var userId = "guest"; // TODO: get the user id from logged in user
         var clientIP = HttpRequestUtil.getClientIp(req);

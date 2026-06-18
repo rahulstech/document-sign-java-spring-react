@@ -1,12 +1,11 @@
 package com.github.rahulstech.document_sign.service.signature;
 
-import com.github.rahulstech.document_sign.datasource.model.Document;
 import com.github.rahulstech.document_sign.datasource.model.Member;
-import com.github.rahulstech.document_sign.datasource.model.Signature;
 import com.github.rahulstech.document_sign.datasource.repository.DocumentRepository;
 import com.github.rahulstech.document_sign.datasource.repository.MemberRepository;
-import com.github.rahulstech.document_sign.datasource.repository.SignatureRepository;
 import com.github.rahulstech.document_sign.dto.SelfSignRequest;
+import com.github.rahulstech.document_sign.service.pdfservice.PdfData;
+import com.github.rahulstech.document_sign.service.pdfservice.PdfService;
 import com.github.rahulstech.document_sign.service.storageservice.StorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,52 +20,92 @@ import java.util.UUID;
 public class SignatureService {
 
     private final StorageService storageService;
-
     private final DocumentRepository docRepo;
-
     private final MemberRepository memRepo;
+    private final PdfService pdfService;
 
-    private final SignatureRepository sigRepo;
-
+    /**
+     * Handles saving a self-signature on a document.
+     * This involves saving the uploaded signature file to permanent storage,
+     * registering the signer member's actions in the database, and updating
+     * the document's state to signed with the annotated PDF.
+     *
+     * @param userId The ID of the signing user.
+     * @param documentId The ID of the document being signed.
+     * @param req The self-signature request details.
+     * @param clientIP The IP address of the client performing the signature.
+     */
     @Transactional
-    public void saveSelfSignature(String userId, String docId, SelfSignRequest req, String clientIP) {
-
-        Random random = new Random();
+    public void saveSelfSignature(String userId, UUID documentId, SelfSignRequest req, String clientIP) {
         // TODO: get display name and email of the logged in user
-        var userDisplayName = "John Doe";
-        var userEmail = String.format("johndoe%d@domain.com", random.nextLong(1, 10000000));
-        var documentId = UUID.fromString(docId);
+        var random = new Random();
+        var randomLong = random.nextLong(1, 10000000);
+        var userDisplayName = "John " + randomLong;
+        var userEmail = String.format("john%d@domain.com", randomLong);
 
         // save the signature
-        var result = storageService.saveUpload(req.uploadKey(), userId, docId);
+        var result = storageService.saveUpload(req.uploadKey(), userId, documentId.toString());
 
-        // add member
+        // insert member
+        var actionData = req.toSignatureData(result.publicUrl());
+        var savedMember = insertSelfSignature(documentId, userDisplayName, userEmail, actionData, clientIP);
+
+        // TODO: add audit log
+
+        updateDocumentStatus(savedMember);
+    }
+
+    /**
+     * Inserts a record for the signer member indicating they have completed their signature.
+     *
+     * @param documentId The ID of the associated document.
+     * @param memberName The name of the member.
+     * @param memberEmail The email of the member.
+     * @param actionData The signature coordinates and S3 URL data.
+     * @param clientIP The client's IP address.
+     * @return The saved Member entity.
+     */
+    private Member insertSelfSignature(
+            UUID documentId,
+            String memberName,
+            String memberEmail,
+            Member.SignatureData actionData,
+            String clientIP
+    ) {
+        // create member
         var member = new Member();
-        member.setName(userDisplayName);
-        member.setEmail(userEmail);
+        member.setName(memberName);
+        member.setEmail(memberEmail);
         member.setDocumentId(documentId);
         member.setRole(Member.Role.SIGNER);
         member.setAction(Member.Action.SIGNED);
         member.setActionedAt(OffsetDateTime.now());
+        member.setActionData(actionData);
+        member.setClientIP(clientIP);
 
-        var savedMember = memRepo.saveAndFlush(member);
+        // save member and return
+        return memRepo.saveAndFlush(member);
+    }
 
-        // save signature
-        var sigData = req.toData();
+    /**
+     * Updates the status of the document to SIGNED by overlaying the member's signature
+     * on the PDF and updating the document S3 URL and status in the repository.
+     *
+     * @param savedMember The member who signed the document.
+     */
+    private void updateDocumentStatus(Member savedMember) {
+        try {
+            var documentId = savedMember.getDocumentId();
 
-        var signature = new Signature();
-        signature.setMemberId(savedMember.getId());
-        signature.setUrl(result.publicUrl());
-        signature.setData(sigData);
-        signature.setClientIP(clientIP);
+            // create signature annotated pdf
+            var documentUrl = docRepo.findDocumentUrlById(documentId).orElseThrow();
+            var pdfData = new PdfData(documentUrl, PdfData.Signature.fromSignerMember(savedMember));
+            var signedUrl = pdfService.createSignatureAnnotatedPdf(pdfData);
 
-        sigRepo.saveAndFlush(signature);
-
-        // update document
-        docRepo.changeDocumentStatus(documentId, Document.Status.SIGNED);
-
-        // TODO: add audit log
-
-        // TODO: create annotated document with signature and signature id
+            // update document status to SIGNED
+            docRepo.markDocumentSigned(documentId, signedUrl);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update document status with signature annotated PDF", e);
+        }
     }
 }

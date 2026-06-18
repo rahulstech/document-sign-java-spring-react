@@ -6,8 +6,8 @@ export const DragType = {
 
 export interface SignatureData {
     pageNumber: number;
-    x: number; // percentage
-    y: number; // percentage
+    left: number; // percentage
+    top: number; // percentage
     width: number; // percentage
     height: number; // percentage
 }
@@ -18,14 +18,14 @@ export interface PdfViewerProps {
     placedSignature?: SignatureData | null;
     onSignatureDrop?: (
         pageNumber: number,
-        position: { x: number; y: number; width: number; height: number }
+        position: { left: number; top: number; width: number; height: number }
     ) => void;
 }
 
 export interface SignatureAnnotationProps {
     signatureUrl: string;
-    x: number; // percentage
-    y: number; // percentage
+    left: number; // percentage
+    top: number; // percentage
     width: number; // percentage
     height: number; // percentage
 }
@@ -36,7 +36,7 @@ export interface PdfPageProps {
     placedSignature?: SignatureData | null;
     onSignatureDrop?: (
         pageNumber: number,
-        position: { x: number; y: number; width: number; height: number }
+        position: { left: number; top: number; width: number; height: number }
     ) => void;
 }
 

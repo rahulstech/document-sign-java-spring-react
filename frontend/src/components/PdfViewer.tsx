@@ -46,8 +46,8 @@ function SignatureAnnotation(props: SignatureAnnotationProps) {
             signatureUrl={props.signatureUrl}
             style={{
                 position: "absolute",
-                left: `${props.x}%`,
-                top: `${props.y}%`,
+                left: `${props.left}%`,
+                top: `${props.top}%`,
                 width: `${props.width}%`,
                 height: `${props.height}%`,
                 maxWidth: 'none',
@@ -84,14 +84,14 @@ function PdfPage({ pageNum, signatureUrl, placedSignature, onSignatureDrop }: Pd
             left = Math.max(0, Math.min(left, maxLeft));
             top = Math.max(0, Math.min(top, maxTop));
 
-            const percentX = (left / pageRect.width) * 100;
-            const percentY = (top / pageRect.height) * 100;
+            const percentLeft = (left / pageRect.width) * 100;
+            const percentTop = (top / pageRect.height) * 100;
             const percentWidth = (signatureWidth / pageRect.width) * 100;
             const percentHeight = (signatureHeight / pageRect.height) * 100;
 
             onSignatureDrop?.(pageNum, {
-                x: percentX,
-                y: percentY,
+                left: percentLeft,
+                top: percentTop,
                 width: percentWidth,
                 height: percentHeight
             });
@@ -120,8 +120,8 @@ function PdfPage({ pageNum, signatureUrl, placedSignature, onSignatureDrop }: Pd
             {signatureUrl && placedSignature && placedSignature.pageNumber === pageNum && (
                 <SignatureAnnotation 
                     signatureUrl={signatureUrl} 
-                    x={placedSignature.x}
-                    y={placedSignature.y}
+                    left={placedSignature.left}
+                    top={placedSignature.top}
                     width={placedSignature.width}
                     height={placedSignature.height}
                 />

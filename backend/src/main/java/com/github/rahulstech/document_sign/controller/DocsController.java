@@ -3,12 +3,17 @@ package com.github.rahulstech.document_sign.controller;
 import com.github.rahulstech.document_sign.dto.*;
 import com.github.rahulstech.document_sign.exception.HttpException;
 import com.github.rahulstech.document_sign.datasource.model.Document;
+import com.github.rahulstech.document_sign.datasource.model.DocumentSignInfo;
 import com.github.rahulstech.document_sign.datasource.repository.DocumentRepository;
 import com.github.rahulstech.document_sign.service.storageservice.StorageService;
 import jakarta.validation.Valid;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.UUID;
 
 @RestController
@@ -57,5 +62,22 @@ public class DocsController {
                 .orElseThrow(() -> HttpException.notFound("no document found for id "+docId));
 
         return GetDocumentInfoResponse.fromDocument(info);
+    }
+
+    @GetMapping("/{doc_id}/download-signed")
+    public ResponseEntity<@NonNull Void> downloadSignedDocument(@PathVariable("doc_id") UUID docId) {
+        var signInfo = docRepo.getDocumentSignedInfo(docId)
+                .orElseThrow(() -> HttpException.notFound("no document found for id " + docId));
+
+        if (signInfo.getStatus() != Document.Status.SIGNED || signInfo.getSignedUrl() == null || signInfo.getSignedUrl().isBlank()) {
+            throw new HttpException(400, "Document is not signed yet");
+        }
+
+        String key = storageService.getS3KeyFromUrl(signInfo.getSignedUrl());
+        String presignedUrl = storageService.getTemporaryDownloadUrl(key);
+
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(presignedUrl))
+                .build();
     }
 }

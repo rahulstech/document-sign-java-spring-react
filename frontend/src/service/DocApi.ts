@@ -23,8 +23,8 @@ export interface SelfSignRequest {
     };
     pageNumber: number,
     bounds: {
-        x: number; // percentage
-        y: number; // percentage
+        left: number; // percentage
+        top: number; // percentage
         width: number; // percentage
         height: number; // percentage
     }
@@ -113,11 +113,11 @@ export async function selfSign({ documentId, signature, pageNumber, bounds }: Se
     });
 
     // Step 3 – confirm the upload
-    const { x,y, width, height } = bounds;
+    const { left, top, width, height } = bounds;
     await client.post<void>(
         `/docs/${documentId}/signature/self`,
         { 
-            uploadKey, pageNumber, x, y, width, height,
+            uploadKey, pageNumber, left, top, width, height,
         },
     );
 }
